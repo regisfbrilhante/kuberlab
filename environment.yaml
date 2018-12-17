@@ -1,0 +1,35 @@
+---
+- name: master01
+  box: ubuntu/bionic64
+  hostname: master01.kuberlab.intranet
+  ipaddress: 192.168.200.10
+  memory: 1024
+  cpus: 1
+  provision: provision/ansible/base.yaml
+
+- name: master02
+  box: ubuntu/bionic64
+  hostname: master02.kuberlab.intranet
+  ipaddress: 192.168.200.20
+  memory: 1024
+  cpus: 1
+  provision: provision/ansible/base.yaml
+
+- name: worker01
+  box: ubuntu/bionic64
+  hostname: worker01.kuberlab.intranet
+  ipaddress: 192.168.200.30
+  memory: 1024
+  cpus: 1
+  provision: provision/ansible/base.yaml
+ 
+- name: worker02
+  box: ubuntu/bionic64
+  hostname: worker02.kuberlab.intranet
+  ipaddress: 192.168.200.40
+  memory: 1024
+  cpus: 1
+  provision: provision/ansible/base.yaml
+
+
+...
