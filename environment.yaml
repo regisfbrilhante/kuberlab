@@ -1,5 +1,5 @@
 ---
-- name: master01
+- name: manager
   box: ubuntu/bionic64
   hostname: master01.kuberlab.intranet
   ipaddress: 192.168.200.10
@@ -7,7 +7,7 @@
   cpus: 1
   provision: provision/ansible/base.yaml
 
-- name: master02
+- name: node01
   box: ubuntu/bionic64
   hostname: master02.kuberlab.intranet
   ipaddress: 192.168.200.20
@@ -15,7 +15,7 @@
   cpus: 1
   provision: provision/ansible/base.yaml
 
-- name: worker01
+- name: node02
   box: ubuntu/bionic64
   hostname: worker01.kuberlab.intranet
   ipaddress: 192.168.200.30
@@ -23,7 +23,7 @@
   cpus: 1
   provision: provision/ansible/base.yaml
  
-- name: worker02
+- name: node03
   box: ubuntu/bionic64
   hostname: worker02.kuberlab.intranet
   ipaddress: 192.168.200.40

@@ -30,7 +30,7 @@
         path: /etc/hosts
         line: "{{ item }}"
       with_items:
-        - 192.168.200.10 master01.kuberlab.intranet master01
-        - 192.168.200.20 master02.kuberlab.intranet master02          
-        - 192.168.200.30 worker01.kuberlab.intranet worker01
-        - 192.168.200.40 worker02.kuberlab.intranet worker02
+        - 192.168.200.10 manager.kuberlab.intranet manager
+        - 192.168.200.20 node01.kuberlab.intranet node01          
+        - 192.168.200.30 node02.kuberlab.intranet node02
+        - 192.168.200.40 node03.kuberlab.intranet node03
