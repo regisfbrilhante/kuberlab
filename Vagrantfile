@@ -17,6 +17,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # loop with enviroments
   env.each do |env|
     config.vm.define env['name'] do |srv|
+      srv.vm.provision :shell, inline: "apt install -y python-pip"
       srv.vm.box      = env['box']
       srv.vm.hostname = env['hostname']
       srv.vm.network 'private_network', ip: env['ipaddress']
