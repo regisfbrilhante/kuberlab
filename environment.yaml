@@ -1,34 +1,34 @@
 ---
 - name: manager
   box: ubuntu/xenial64
-  hostname: master01.kuberlab.intranet
+  hostname: manager.kuberlab.intranet
   ipaddress: 192.168.200.10
-  memory: 1024
-  cpus: 1
+  memory: 2050
+  cpus: 2
   provision: provision/ansible/base.yaml
 
 - name: node01
   box: ubuntu/xenial64
-  hostname: master02.kuberlab.intranet
+  hostname: node01.kuberlab.intranet
   ipaddress: 192.168.200.20
-  memory: 1024
-  cpus: 1
+  memory: 2050
+  cpus: 2
   provision: provision/ansible/base.yaml
 
 - name: node02
   box: ubuntu/xenial64
-  hostname: worker01.kuberlab.intranet
+  hostname: node02.kuberlab.intranet
   ipaddress: 192.168.200.30
-  memory: 1024
-  cpus: 1
+  memory: 2050
+  cpus: 2
   provision: provision/ansible/base.yaml
  
 - name: node03
   box: ubuntu/xenial64
-  hostname: worker02.kuberlab.intranet
+  hostname: node03.kuberlab.intranet
   ipaddress: 192.168.200.40
-  memory: 1024
-  cpus: 1
+  memory: 2050
+  cpus: 2
   provision: provision/ansible/base.yaml
 
 
