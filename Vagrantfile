@@ -1,43 +1,38 @@
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
+IMAGE_NAME = "debian/buster64"
+N = 2
 
-# Variaveis
-VAGRANTFILE_API_VERSION = 2
+Vagrant.configure("2") do |config|
+    config.ssh.insert_key = false
 
-# call  YAML module
-require 'yaml'
-
-# Read YAML configuration file
-env = YAML.load_file('environment.yaml')
-
-# Limiting version of vagrant 
-Vagrant.require_version '>= 2.0.0'
-
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  # loop with enviroments
-  env.each do |env|
-    config.vm.define env['name'] do |srv|
-      srv.vm.provision :shell, inline: "apt-get update && apt-get install -y python-pip"
-      srv.vm.box      = env['box']
-      srv.vm.hostname = env['hostname']
-      srv.vm.network 'private_network', ip: env['ipaddress']
-      if env['additional_interface'] == true
-        srv.vm.network 'private_network', ip: '1.0.0.100',
-          auto_config: false
-      end
-      srv.vm.provider 'virtualbox' do |vb|
-        vb.name   = env['name']
-        vb.gui    = true
-        vb.memory = env['memory']
-        vb.cpus   = env['cpus']
-      end
-      srv.vm.provision 'ansible_local' do |ansible|
-        ansible.playbook           = env['provision']
-        ansible.install_mode       = 'pip'
-        ansible.become             = true
-        ansible.become_user        = 'root'
-        ansible.compatibility_mode = '2.0'
-      end
+    config.vm.provider "virtualbox" do |v|
+        v.memory = 2048
+        v.cpus = 2
+        v.gui = true
     end
-  end
+      
+    config.vm.define "master" do |master|
+        master.vm.box = IMAGE_NAME
+        master.vm.network "private_network", ip: "10.0.2.10"
+        master.vm.hostname = "master"
+        master.vm.provision "ansible" do |ansible|
+            ansible.playbook = "kubernetes-setup/master-playbook.yml"
+            ansible.extra_vars = {
+                node_ip: "10.0.2.10",
+            }
+        end
+    end
+
+    (1..3).each do |i|
+        config.vm.define "node-#{i}" do |node|
+            node.vm.box = IMAGE_NAME
+            node.vm.network "private_network", ip: "10.0.2.#{i + 20}"
+            node.vm.hostname = "node-#{i}"
+            node.vm.provision "ansible" do |ansible|
+                ansible.playbook = "kubernetes-setup/node-playbook.yml"
+                ansible.extra_vars = {
+                    node_ip: "10.0.2.#{i + 20}",
+                }
+            end
+        end
+    end
 end
