@@ -1,5 +1,5 @@
 ---
-# INSTALL DOCKER
+# SETUP ENVIRONMENT
 - hosts: all
   become: true
   tasks:
@@ -10,11 +10,19 @@
       - touch /etc/resolv.conf
       - rm /etc/resolv.conf
       - touch /etc/resolv.conf
-  
+
+  - name: Setup hosts
+    shell: echo "{{ item }}" >> /etc/hosts
+    with_items:
+      - "10.0.3.10 master"
+      - "10.0.3.21 node-1"
+      - "10.0.3.22 node-2"
+      - "10.0.3.23 node-3"
+
   - name: Setup DNS servers
     shell: echo "nameserver 8.8.8.8" > /etc/resolv.conf ; echo "nameserver 8.8.4.4" >> /etc/resolv.conf; 
 
-  
+  # PACKAGES 
   - name: Install packages that allow apt to be used over HTTPS
     apt:
       name: "{{ packages }}"
@@ -27,15 +35,27 @@
       - curl
       - gnupg-agent
       - software-properties-common
+      - gnupg2
+      - ufw
+    
+  - name: Installing GPG key 
+    apt_key:
+      url: "https://download.docker.com/linux/debian/gpg"
+      state: present
 
+  - apt_repository:
+      repo: "deb [arch=amd64] https://download.docker.com/linux/debian buster stable"
+      state: present
+
+  # INSTALL DOCKER
   - name: Add an apt signing key for Docker
     apt_key:
-      url: https://download.docker.com/linux/ubuntu/gpg
+      url: https://download.docker.com/linux/debian/gpg
       state: present
 
   - name: Add apt repository for stable version
     apt_repository:
-      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+      repo: deb [arch=amd64] https://download.docker.com/linux/debian buster stable
       state: present
 
   - name: Install docker and its dependecies
@@ -56,22 +76,74 @@
       name: vagrant
       group: docker
 
+  - name: Creating /etc/docker/daemon.json file
+    command: touch /etc/docker/daemon.json 
 
-  # DISABLE SWAP
-  # - name: Remove swapfile from /etc/fstab
-  #     mount:
-  #       name: "{{ item }}"
-  #       fstype: swap
-  #       state: absent
-  #     with_items:
-  #       - swap
-  #       - none
+  - name: Create system docker service
+    blockinfile:
+      path: /etc/docker/daemon.json
+      create: yes
+      marker: ""
+      block: |
+        {
+          "exec-opts": ["native.cgroupdriver=systemd"],
+            "log-driver": "json-file",
+            "log-opts": {
+            "max-size": "100m"},
+            "storage-driver": "overlay2"
+        } 
+          
+  - name: Create systemd docker service
+    command: mkdir -p /etc/systemd/system/docker.service.d
+  
+  - name: Docker service Restart
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: docker
 
-    # - name: Disable swap
-    #   command: swapoff -a
-    #   when: ansible_swaptotal_mb > 0
+  # CONFIGURING FIREWLL
+  - name: UFW -> Allow ports Kubernetes and Weave Net
+    ufw:
+      rule: allow
+      port: '{{ item }}'
+      proto: tcp
+    loop:
+      - 6443
+      - 10250
+      - 10251
+      - 10252
+      - 6783
+
+  - name: UFW -> Allow port range 2379-2380
+    ufw:
+      rule: allow
+      port: 2379:2380
+      proto: tcp
+
+  - name: UFW -> Allow ports 
+    ufw:
+      rule: allow
+      port: '{{ item }}'
+      proto: udp
+    loop:
+      - 6783
+      - 6784
+    
 
   # INSTALL KUBERNETES
+  - name: Remove swapfile from /etc/fstab
+    mount:
+      name: "{{ item }}"
+      fstype: swap
+      state: absent
+    with_items:
+      - swap
+      - none
+
+  - name: Disable swap
+    command: swapoff -a
+    when: ansible_swaptotal_mb > 0
   - name: Add an apt signing key for Kubernetes
     apt_key:
       url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
@@ -102,8 +174,6 @@
       name: kubelet
       daemon_reload: yes
       state: restarted
-  
-
 
   # INITIALIZE CLUSTER
   - name: Check if intialized before
@@ -112,7 +182,7 @@
     register: kubernetes_initialized
   
   - name: Initialize the Kubernetes cluster using kubeadm
-    command: kubeadm init --apiserver-advertise-address="10.0.2.10" --apiserver-cert-extra-sans="10.0.2.10"  --node-name master --pod-network-cidr=10.200.0.0/16
+    command: kubeadm init --apiserver-advertise-address="10.0.3.10" --apiserver-cert-extra-sans="10.0.3.10"  --node-name master --pod-network-cidr=10.200.0.0/16
     when: kubernetes_initialized.stat.exists == False
 
   - name: Setup kubeconfig for vagrant user
@@ -122,33 +192,21 @@
       - cp  /etc/kubernetes/admin.conf /home/vagrant/.kube/config 
       - chown vagrant:vagrant /home/vagrant/.kube/config
 
-
-  - name: Check if calico is installed
-    stat:
-      path: /var/log/pods/tigera-operator_tigera*
-    register: calico_installed
   
-  # INSTALL CALICO
+  # INSTALL WAEVE NET
   - name: Install calico pod network
     become: false
-    command: kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
-    when: calico_installed.stat.exists == False
-    ignore_errors: yes
+    shell: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
 
-
-  # GENERATE JOIN
+  # GENERATE JOIN COMMAND
   - name: Generate join command
-    shell: kubeadm token create --print-join-command > /tmp/join-command
-  
-   
-  - name: Copy join command to local file
-    fetch:
-      src: /tmp/join-command
-      dest: join-command
+    command: kubeadm token create --print-join-command
+    register: join_command
 
-  - name: Remove join command
-    command: rm /tmp/join-command
-  
+  - name: Copy join command to local file
+    become: false
+    local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
+
   handlers:
     - name: docker status
       service: name=docker state=started
