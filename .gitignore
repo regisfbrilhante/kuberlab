@@ -1,3 +1,4 @@
 *.log
 .vagrant
 provision
+**/join-command
